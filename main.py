@@ -1,47 +1,34 @@
 import asyncio
-import speech_recognition as sr
-from telethon import TelegramClient
+
+from SpeechRecognizer import SpeechRecognizer
+from TelegramBot import TelegramBot
+from ConsoleOutput import ConsoleOutput
 
 API_ID = '29776585'
 API_HASH = '0e85ed227dfa5ac9a2ac232659338076'
 BOT_USERNAME = 'hidola1bot'
 
 
-async def send_message_to_telegram(message):
-    async with TelegramClient('session_name', API_ID, API_HASH) as client:
-        try:
-            await client.send_message(BOT_USERNAME, message)
-            print('Сообщение отправлено успешно')
-        except Exception as e:
-            print(f'Ошибка при отправке сообщения: {e}')
+class MainApplication:
+    def __init__(self):
+        self.speech_recognizer = SpeechRecognizer()
+        self.telegram_bot = TelegramBot(API_ID, API_HASH, BOT_USERNAME)
+        self.console_output = ConsoleOutput()
 
+    async def process_speech(self):
+        while True:
+            text = self.speech_recognizer.recognize_speech()
+            if text and "хей" in text.lower():
+                message = text.lower().replace('хей', '').strip()
+                await self.telegram_bot.send_message(message)
+                # Wait for the response before continuing
+                await self.telegram_bot.wait_for_response()
 
-def recognize_speech_and_send_message():
-    recognizer = sr.Recognizer()
-    microphone = sr.Microphone()
-
-    with microphone as source:
-        print("Скажите что-нибудь...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-
-    try:
-        print("Распознавание...")
-        text = recognizer.recognize_google(audio, language='ru-RU')
-        print(f"Вы сказали: {text}")
-
-        if "дола" in text:
-            message = text.replace('дола', '').strip()
-            asyncio.run(send_message_to_telegram(message))
-        else:
-            print("Активационная фраза не найдена.")
-
-    except sr.UnknownValueError:
-        print("Не удалось распознать речь")
-    except sr.RequestError as e:
-        print(f"Ошибка сервиса распознавания речи: {e}")
+    async def run(self):
+        await self.telegram_bot.start()  # Start the Telegram client
+        await self.process_speech()
 
 
 if __name__ == '__main__':
-    while True:
-        recognize_speech_and_send_message()
+    app = MainApplication()
+    asyncio.run(app.run())
